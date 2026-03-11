@@ -1,0 +1,15 @@
+{
+    "name": "savefacegroup",
+    "version": "1.0.0",
+    "description": "Save Facebook Group links - Nhóm không duyệt, đăng công khai",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js",
+        "dev": "node server.js"
+    },
+    "dependencies": {
+        "cheerio": "^1.0.0",
+        "dotenv": "^16.4.7",
+        "express": "^4.21.2"
+    }
+}
