@@ -152,14 +152,23 @@ async function addGroup() {
     btnText.innerHTML = '<span class="spinner"></span> Đang tìm...';
 
     let groupName = parsed.name;
+    let groupDesc = '';
+    let memberCount = '';
+    let privacy = '';
     const info = await fetchGroupInfo(parsed.url);
     if (info.success && info.name && info.name !== 'Facebook') {
         groupName = info.name;
     }
+    if (info.description) groupDesc = info.description;
+    if (info.memberCount) memberCount = info.memberCount;
+    if (info.privacy) privacy = info.privacy;
 
     const { data: { user } } = await db.auth.getUser();
     const { error } = await db.from('groups').insert({
         url: parsed.url, slug: parsed.slug, name: groupName,
+        description: groupDesc,
+        member_count: memberCount,
+        privacy: privacy,
         note: 'NHÓM KHÔNG DUYỆT - ĐĂNG CÔNG KHAI',
         created_by: user?.email || 'unknown',
     });
@@ -212,12 +221,16 @@ async function retryFetchName(id) {
     const info = await fetchGroupInfo(group.url);
 
     if (info.success && info.name && info.name !== 'Facebook') {
-        await db.from('groups').update({ name: info.name }).eq('id', id);
-        group.name = info.name;
+        const updates = { name: info.name };
+        if (info.description) updates.description = info.description;
+        if (info.memberCount) updates.member_count = info.memberCount;
+        if (info.privacy) updates.privacy = info.privacy;
+        await db.from('groups').update(updates).eq('id', id);
+        Object.assign(group, updates);
         showToast(`Đã cập nhật: ${info.name}`);
         renderGroups(document.getElementById('searchInput').value);
     } else {
-        showToast('Không lấy được tên. Facebook chặn request.', 'error');
+        showToast('Không lấy được tên. Thử lại sau.', 'error');
         if (btn) {
             btn.classList.remove('loading');
             btn.innerHTML = '🔄 Lấy tên';
@@ -304,6 +317,9 @@ function renderGroups(filter = '') {
         const isGenericName = group.name === 'Facebook' || group.name.startsWith('Group #');
         const badgeClass = isGenericName ? 'group-badge no-name' : 'group-badge';
         const badgeText = isGenericName ? 'Chưa có tên' : 'Công khai';
+        const memberHtml = group.member_count ? `<span class="group-members">👥 ${escapeHtml(group.member_count)}</span>` : '';
+        const privacyHtml = group.privacy ? `<span class="group-privacy">${escapeHtml(group.privacy)}</span>` : '';
+        const descHtml = group.description ? `<div class="group-desc" title="${escapeHtml(group.description)}">${escapeHtml(group.description)}</div>` : '';
 
         return `
       <div class="group-card">
@@ -315,6 +331,8 @@ function renderGroups(filter = '') {
                 data-id="${group.id}" title="Click sửa tên">${safeName}</span>
               <span class="${badgeClass}">${badgeText}</span>
             </div>
+            ${memberHtml}${privacyHtml}
+            ${descHtml}
             <div class="group-link" title="${safeUrl}">${safeUrl}</div>
           </div>
         </div>
