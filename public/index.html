@@ -38,7 +38,7 @@
         <!-- Header -->
         <header class="header">
             <div class="header-left">
-                <h1>📋 Lưu trữ Group facebook</h1>
+                <h1>📋 Lưu trữ Group facebook đăng bài</h1>
                 <p>Lưu nhóm Facebook không duyệt — đăng công khai</p>
             </div>
             <div class="header-right">
@@ -80,31 +80,58 @@
 
         <!-- Footer Actions -->
         <div class="footer-actions">
+            <button class="btn-secondary btn-accent" onclick="openBulkModal()">
+                🔍 Thêm hàng loạt
+            </button>
             <button class="btn-secondary" onclick="copyAllLinks()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                </svg>
-                Copy tất cả link
+                📋 Copy tất cả link
             </button>
             <button class="btn-secondary" onclick="exportGroups()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-                Xuất backup
+                📥 Xuất backup
             </button>
             <button class="btn-secondary" onclick="importGroups()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="17 8 12 3 7 8" />
-                    <line x1="12" y1="3" x2="12" y2="15" />
-                </svg>
-                Nhập backup
+                📤 Nhập backup
             </button>
         </div>
 
+    </div>
+
+    <!-- ===== BULK IMPORT MODAL ===== -->
+    <div id="bulkModal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>🔍 Thêm hàng loạt Group Facebook</h2>
+                <button class="modal-close" onclick="closeBulkModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-hint">
+                    <strong>Cách dùng:</strong> Mở Facebook → Search group theo keyword → Copy link từng group → Paste
+                    vào đây (mỗi link 1 dòng)
+                </p>
+                <div class="form-group">
+                    <label>Keyword / Tag (tuỳ chọn)</label>
+                    <input type="text" id="bulkKeyword" placeholder="VD: giáo viên, marketing, STEM...">
+                </div>
+                <div class="form-group">
+                    <label>Paste link group (mỗi dòng 1 link, tối đa 50)</label>
+                    <textarea id="bulkLinks" rows="8"
+                        placeholder="https://facebook.com/groups/abc123&#10;https://facebook.com/groups/xyz456&#10;https://facebook.com/groups/..."></textarea>
+                </div>
+                <div id="bulkProgress" class="bulk-progress hidden">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">Đang xử lý...</div>
+                    <div class="bulk-log" id="bulkLog"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeBulkModal()">Đóng</button>
+                <button class="btn-add" id="btnBulkStart" onclick="startBulkImport()">
+                    🚀 Bắt đầu quét
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Toast Container -->

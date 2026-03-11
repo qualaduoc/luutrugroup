@@ -407,6 +407,129 @@ async function importGroups() {
     input.click();
 }
 
+// ===== Bulk Import =====
+function openBulkModal() {
+    document.getElementById('bulkModal').classList.remove('hidden');
+    document.getElementById('bulkLinks').value = '';
+    document.getElementById('bulkKeyword').value = '';
+    document.getElementById('bulkProgress').classList.add('hidden');
+    document.getElementById('bulkLog').innerHTML = '';
+    document.getElementById('btnBulkStart').disabled = false;
+}
+
+function closeBulkModal() {
+    document.getElementById('bulkModal').classList.add('hidden');
+}
+
+async function startBulkImport() {
+    const textarea = document.getElementById('bulkLinks');
+    const keyword = document.getElementById('bulkKeyword').value.trim();
+    const btn = document.getElementById('btnBulkStart');
+    const progressDiv = document.getElementById('bulkProgress');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    const bulkLog = document.getElementById('bulkLog');
+
+    // Parse URLs from textarea
+    const lines = textarea.value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const urls = [];
+
+    for (const line of lines) {
+        const parsed = parseFacebookGroupUrl(line);
+        if (parsed && !allGroups.some(g => g.slug === parsed.slug)) {
+            urls.push(parsed);
+        }
+    }
+
+    if (urls.length === 0) {
+        showToast('Không tìm thấy link group hợp lệ hoặc tất cả đã lưu', 'error');
+        return;
+    }
+
+    // Show progress
+    btn.disabled = true;
+    textarea.disabled = true;
+    progressDiv.classList.remove('hidden');
+    bulkLog.innerHTML = '';
+    progressFill.style.width = '0%';
+    progressText.textContent = `Đang xử lý 0/${urls.length}...`;
+
+    const { data: { user } } = await db.auth.getUser();
+    let savedCount = 0;
+
+    try {
+        // Use SSE to get real-time results
+        const res = await fetch('/api/batch-scrape', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ urls: urls.map(u => u.url) }),
+        });
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const events = buffer.split('\n\n');
+            buffer = events.pop(); // Keep incomplete event in buffer
+
+            for (const event of events) {
+                if (!event.startsWith('data: ')) continue;
+                const data = JSON.parse(event.replace('data: ', ''));
+
+                if (data.done) continue;
+
+                const i = data.index;
+                const u = urls[i];
+                const pct = Math.round(((i + 1) / data.total) * 100);
+                progressFill.style.width = pct + '%';
+                progressText.textContent = `Đang xử lý ${i + 1}/${data.total}...`;
+
+                // Determine the name
+                let name = u.name;
+                if (data.success && data.name && data.name !== 'Facebook') {
+                    name = data.name;
+                }
+
+                // Save to Supabase
+                const row = {
+                    url: u.url, slug: u.slug, name,
+                    description: data.description || '',
+                    member_count: data.memberCount || '',
+                    privacy: data.privacy || '',
+                    note: keyword ? `[${keyword}] NHÓM KHÔNG DUYỆT - ĐĂNG CÔNG KHAI` : 'NHÓM KHÔNG DUYỆT - ĐĂNG CÔNG KHAI',
+                    created_by: user?.email || 'bulk-import',
+                };
+
+                const { error } = await db.from('groups').insert(row);
+                const success = !error;
+                if (success) savedCount++;
+
+                // Log result
+                const icon = success ? '✅' : (error?.code === '23505' ? '⚠️' : '❌');
+                const msg = success ? name : (error?.code === '23505' ? 'Đã tồn tại' : error?.message || 'Lỗi');
+                bulkLog.innerHTML += `<div class="log-item ${success ? 'log-ok' : 'log-err'}">${icon} <span class="log-name">${escapeHtml(name)}</span> <span class="log-msg">${msg !== name ? msg : ''}</span></div>`;
+                bulkLog.scrollTop = bulkLog.scrollHeight;
+            }
+        }
+
+    } catch (err) {
+        showToast('Lỗi kết nối: ' + err.message, 'error');
+    }
+
+    // Done
+    progressFill.style.width = '100%';
+    progressText.textContent = `✅ Hoàn tất! Đã lưu ${savedCount}/${urls.length} group`;
+    btn.disabled = false;
+    textarea.disabled = false;
+    await loadGroups();
+    showToast(`Đã thêm ${savedCount} group mới`);
+}
+
 // ===== Init =====
 document.addEventListener('DOMContentLoaded', () => {
     checkSession();
