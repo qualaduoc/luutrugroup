@@ -38,14 +38,20 @@
         <!-- Header -->
         <header class="header">
             <div class="header-left">
-                <h1>📋 Lưu trữ Group facebook đăng bài</h1>
-                <p>Lưu nhóm Facebook không duyệt — đăng công khai</p>
+                <h1>📋 Quản lý Group</h1>
+                <p>Lưu nhóm Facebook/Zalo không duyệt — đăng công khai</p>
             </div>
             <div class="header-right">
                 <span class="user-email" id="userEmail"></span>
                 <button class="btn-logout" onclick="handleLogout()">Đăng xuất</button>
             </div>
         </header>
+
+        <!-- Navbar Tabs -->
+        <nav class="platform-tabs">
+            <button class="tab-btn active" id="tabFacebook" onclick="switchPlatform('facebook')">🔵 Facebook Group</button>
+            <button class="tab-btn" id="tabZalo" onclick="switchPlatform('zalo')">🟢 Zalo Group</button>
+        </nav>
 
         <!-- Add Group -->
         <section class="add-section">

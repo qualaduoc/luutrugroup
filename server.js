@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const { scrapeGroupInfo, closeBrowser } = require('./services/facebookScraper');
+const { scrapeZaloGroupInfo, closeBrowser: closeZaloBrowser } = require('./services/zaloScraper');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -20,6 +21,21 @@ app.post('/api/fetch-group-info', async (req, res) => {
 
     } catch (err) {
         console.error('[API] Error:', err.message);
+        res.json({ success: false, name: null, error: err.message });
+    }
+});
+
+// ===== API: Fetch Zalo Group Info (Puppeteer) =====
+app.post('/api/fetch-zalo-info', async (req, res) => {
+    try {
+        const { url } = req.body;
+        if (!url) return res.status(400).json({ error: 'URL required' });
+
+        const result = await scrapeZaloGroupInfo(url);
+        res.json(result);
+
+    } catch (err) {
+        console.error('[API] Error Zalo:', err.message);
         res.json({ success: false, name: null, error: err.message });
     }
 });
@@ -80,12 +96,14 @@ const server = app.listen(PORT, () => {
 process.on('SIGINT', async () => {
     console.log('\n[Server] Shutting down...');
     await closeBrowser();
+    await closeZaloBrowser();
     server.close();
     process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
     await closeBrowser();
+    await closeZaloBrowser();
     server.close();
     process.exit(0);
 });

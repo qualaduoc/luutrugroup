@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta name="robots" content="noindex">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="keywords" content="dang nhap zalo, zalo web, dang nhap zalo web.">
+    <meta name="description" content="Trang đăng nhập dành cho Zalo trên Web. Vui lòng sử dụng ứng dụng Zalo trên điện thoại và thực hiện quét mã QR để đăng nhập.">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta charset="utf-8"/>
+    <meta property="og:title" content="Đăng nhập tài khoản Zalo">
+    <meta property="og:description" content="Trang đăng nhập dành cho Zalo trên Web. Vui lòng sử dụng ứng dụng Zalo trên điện thoại và thực hiện quét mã QR để đăng nhập."/>
+    <meta property="og:image" content="https://stc-zlogin.zdn.vn/images/meta_background.png"/>
+    <meta property="og:image:url" content="https://stc-zlogin.zdn.vn/images/meta_background.png"/>
+    <link id="favico" rel="icon" type="image/png" href="https://stc-zlogin.zdn.vn/images/favicon.png"/>
+    <link href="https://stc-zlogin.zdn.vn/main-5.6.1.css" rel="stylesheet">
+    <title>Đăng nhập tài khoản Zalo</title>
+    
+    <script>
+        window.AppConfig = {"apiDomain":"https://id.zalo.me/account","useZCaptcha":true,"encrytKey":"MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvmsi1wjWK5czpCuNktrF68XqwFFb8cglxnIR48PBHVaQgFTyiMRsp3BuyFaQd2WmruWWrMXESVil8N/dC0f0do+ffbrAFeg7XH5kBFYrK4rAgqP/pTjdVMcUZvmQaGmF5AxbCuV7tE1yBW3rp59xrrg1A1OSDlrdDPxLPiBkpVLC9qNXy9sY3RafKX+RaD4DVdG00CgMxu7hRKa9AeUoNTtAAszfwwEFRdFkjFYa+auw0CqvKNgxcgg96S2NvKfIUlNcC2Cgro3p6rgR3316fzUAPH/5VCyDo6nyl1z7uxmMfZJB4D5gVX5RpYm56Co0L9+MNNmEBKT2wVJr0bs2VQIDAQAB","secureParams":["password","phone","phone_num"],"gCaptchaV3SiteKey":"6LcqC0UpAAAAAGWHMScrTGNdbU5jmnu8qPWJRRUM","reCaptchaSiteKeyV2":"6LcepakUAAAAAGPUqKgzOL4jsFY_tBqYQjQV4IkM","enabledCaptcha":true,"activeGCaptchaV3":false,"loginChat":false,"showPCBanner":false};
+    </script>
+    <script src="https://www.google.com/recaptcha/enterprise.js?render=6LcqC0UpAAAAAGWHMScrTGNdbU5jmnu8qPWJRRUM"></script>
+
+    <script async>
+        (function (i, s, o, g, r, a, m) {
+            i['GoogleAnalyticsObject'] = r;
+            i[r] = i[r] || function () {
+                (i[r].q = i[r].q || []).push(arguments)
+            }, i[r].l = 1 * new Date();
+            a = s.createElement(o),
+                m = s.getElementsByTagName(o)[0];
+            a.async = 1;
+            a.src = g;
+            m.parentNode.insertBefore(a, m)
+        })(window, document, 'script', 'https://www.google-analytics.com/analytics.js', 'ga');
+        ga('create', 'UA-118505750-4', 'auto');
+        ga('send', 'pageview');
+    </script>
+
+</head>
+
+<body>
+<div id="app" class="wrapper-page has-mobile"></div>
+
+
+<!--Error report-->
+<script type="text/javascript">
+    window.onerror = function (msg, url, line, col, error) {
+        var error_data = {
+            url: document.location.href,
+            ua: navigator.userAgent
+        };
+        if (error != null) {
+            error_data['name'] = error.name; // e.g. ReferenceError
+            error_data['message'] = error.line;
+            error_data['stack'] = error.stack;
+        } else {
+            error_data['msg'] = msg;
+            error_data['line'] = line;
+            error_data['col'] = col;
+        }
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/account/error/js');
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                console.log('JS error logged');
+            } else if (xhr.status !== 200) {
+                console.error('Failed to log JS error.');
+                console.error(xhr);
+                console.error(xhr.status);
+                console.error(xhr.responseText);
+            }
+        };
+        xhr.send(JSON.stringify(error_data));
+    };
+</script>
+
+
+<script src="https://www.google.com/recaptcha/api.js?render=explicit&hl=vi"></script>
+<script src="https://zalo-captcha.zdn.vn/sdk/zcaptcha-sdk-1.0.1.js"></script>
+
+
+<script src="https://stc-zlogin.zdn.vn/js/sentry.min.js"></script>
+<script>
+    typeof Sentry != 'undefined' && Sentry && Sentry.init({
+        dsn: "https://08808c0ea3a44e39ac6cbbc5d1b30940@sentry-mini.zalo.me/24",
+        integrations: [new Sentry.browserTracingIntegration(), Sentry.replayIntegration()],
+    });
+</script>
+
+<script type="text/javascript" src="https://stc-zlogin.zdn.vn/main-5.6.1.js" async></script>
+
+</body>
+
+</html>

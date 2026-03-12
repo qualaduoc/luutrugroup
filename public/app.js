@@ -79,6 +79,28 @@ async function checkSession() {
     } catch { }
 }
 
+// ===== Platform Management =====
+let currentPlatform = 'facebook';
+
+function switchPlatform(platform) {
+    currentPlatform = platform;
+    
+    // Update tabs
+    document.getElementById('tabFacebook').classList.toggle('active', platform === 'facebook');
+    document.getElementById('tabZalo').classList.toggle('active', platform === 'zalo');
+    
+    // Update UI elements
+    const urlInput = document.getElementById('urlInput');
+    if (platform === 'facebook') {
+        urlInput.placeholder = 'Paste link group Facebook... (VD: https://facebook.com/groups/abc)';
+    } else {
+        urlInput.placeholder = 'Paste link group Zalo... (VD: https://zalo.me/g/abc12345)';
+    }
+    
+    // Re-render
+    renderGroups(document.getElementById('searchInput').value);
+}
+
 // ===== URL Parser =====
 function parseFacebookGroupUrl(url) {
     url = url.trim();
@@ -101,10 +123,39 @@ function formatSlugToName(slug) {
     return slug.replace(/[._-]+/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
+function parseZaloGroupUrl(url) {
+    url = url.trim();
+    if (!url.startsWith('http')) url = 'https://' + url;
+    try {
+        const parsed = new URL(url);
+        const hostname = parsed.hostname;
+        if (!hostname.includes('zalo.me')) return null;
+        const match = parsed.pathname.match(/\/g\/([a-zA-Z0-9]+)/);
+        if (match && match[1]) {
+            const slug = match[1];
+            return { slug, url, name: `Zalo Group #${slug}` };
+        }
+    } catch { }
+    return null;
+}
+
 // ===== Fetch Group Info (Server-side) =====
 async function fetchGroupInfo(url) {
     try {
         const res = await fetch('/api/fetch-group-info', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url }),
+        });
+        return await res.json();
+    } catch {
+        return { success: false, name: null };
+    }
+}
+
+async function fetchZaloGroupInfo(url) {
+    try {
+        const res = await fetch('/api/fetch-zalo-info', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url }),
@@ -142,11 +193,20 @@ async function addGroup() {
     const btnText = document.getElementById('btnAddText');
     const rawUrl = urlInput.value.trim();
 
-    if (!rawUrl) { showToast('Nhập link group Facebook', 'error'); urlInput.focus(); return; }
+    if (!rawUrl) { showToast('Nhập link group', 'error'); urlInput.focus(); return; }
 
-    const parsed = parseFacebookGroupUrl(rawUrl);
+    let parsed = null;
+    if (currentPlatform === 'facebook') {
+        parsed = parseFacebookGroupUrl(rawUrl);
+    } else {
+        parsed = parseZaloGroupUrl(rawUrl);
+    }
+    
     if (!parsed) { showToast('Link không hợp lệ', 'error'); urlInput.focus(); return; }
-    if (allGroups.some(g => g.slug === parsed.slug)) { showToast('Group đã lưu rồi!', 'error'); urlInput.value = ''; return; }
+    
+    // Check if duplicate across current platform
+    const isDuplicate = allGroups.some(g => g.slug === parsed.slug && (g.platform || 'facebook') === currentPlatform);
+    if (isDuplicate) { showToast('Group đã lưu rồi!', 'error'); urlInput.value = ''; return; }
 
     btn.disabled = true;
     btnText.innerHTML = '<span class="spinner"></span> Đang tìm...';
@@ -155,23 +215,36 @@ async function addGroup() {
     let groupDesc = '';
     let memberCount = '';
     let privacy = '';
-    const info = await fetchGroupInfo(parsed.url);
-    if (info.success && info.name && info.name !== 'Facebook') {
-        groupName = info.name;
+    
+    if (currentPlatform === 'facebook') {
+        const info = await fetchGroupInfo(parsed.url);
+        if (info.success && info.name && info.name !== 'Facebook') {
+            groupName = info.name;
+        }
+        if (info.description) groupDesc = info.description;
+        if (info.memberCount) memberCount = info.memberCount;
+        if (info.privacy) privacy = info.privacy;
+    } else {
+        const info = await fetchZaloGroupInfo(parsed.url);
+        if (info.success && info.name) {
+            groupName = info.name;
+        }
+        if (info.memberCount) memberCount = info.memberCount;
+        if (info.creatorName) groupDesc = 'Trưởng nhóm: ' + info.creatorName;
     }
-    if (info.description) groupDesc = info.description;
-    if (info.memberCount) memberCount = info.memberCount;
-    if (info.privacy) privacy = info.privacy;
 
     const { data: { user } } = await db.auth.getUser();
-    const { error } = await db.from('groups').insert({
+    const row = {
         url: parsed.url, slug: parsed.slug, name: groupName,
         description: groupDesc,
         member_count: memberCount,
         privacy: privacy,
-        note: 'NHÓM KHÔNG DUYỆT - ĐĂNG CÔNG KHAI',
+        note: currentPlatform === 'zalo' ? 'NHÓM ZALO' : 'NHÓM KHÔNG DUYỆT - ĐĂNG CÔNG KHAI',
         created_by: user?.email || 'unknown',
-    });
+        platform: currentPlatform
+    };
+    
+    const { error } = await db.from('groups').insert(row);
 
     btn.disabled = false;
     btnText.textContent = 'Thêm';
@@ -218,11 +291,19 @@ async function retryFetchName(id) {
         btn.innerHTML = '<span class="spinner"></span> Đang lấy...';
     }
 
-    const info = await fetchGroupInfo(group.url);
+    const platform = group.platform || 'facebook';
+    let info = null;
+    
+    if (platform === 'facebook') {
+        info = await fetchGroupInfo(group.url);
+    } else {
+        info = await fetchZaloGroupInfo(group.url);
+    }
 
     if (info.success && info.name && info.name !== 'Facebook') {
         const updates = { name: info.name };
         if (info.description) updates.description = info.description;
+        if (info.creatorName) updates.description = 'Trưởng nhóm: ' + info.creatorName;
         if (info.memberCount) updates.member_count = info.memberCount;
         if (info.privacy) updates.privacy = info.privacy;
         await db.from('groups').update(updates).eq('id', id);
@@ -246,7 +327,11 @@ async function editGroupUrl(id) {
     const newUrl = prompt('Nhập link mới cho group:', group.url);
     if (!newUrl || newUrl === group.url) return;
 
-    const parsed = parseFacebookGroupUrl(newUrl);
+    const platform = group.platform || 'facebook';
+    let parsed = null;
+    if (platform === 'facebook') parsed = parseFacebookGroupUrl(newUrl);
+    else parsed = parseZaloGroupUrl(newUrl);
+    
     if (!parsed) { showToast('Link không hợp lệ', 'error'); return; }
 
     const { error } = await db.from('groups').update({
@@ -283,15 +368,19 @@ function copyAllLinks() {
 // ===== Render (3-column grid, compact cards) =====
 function renderGroups(filter = '') {
     const list = document.getElementById('groupList');
-    document.getElementById('groupCount').textContent = allGroups.length;
+    
+    // Filter by platform first
+    let filtered = allGroups.filter(g => (g.platform || 'facebook') === currentPlatform);
+    
+    document.getElementById('groupCount').textContent = filtered.length;
 
-    const filtered = filter
-        ? allGroups.filter(g =>
+    if (filter) {
+        filtered = filtered.filter(g =>
             g.name.toLowerCase().includes(filter.toLowerCase()) ||
             g.slug.toLowerCase().includes(filter.toLowerCase()) ||
             g.url.toLowerCase().includes(filter.toLowerCase())
-        )
-        : allGroups;
+        );
+    }
 
     if (!filtered.length) {
         list.innerHTML = `
@@ -314,9 +403,9 @@ function renderGroups(filter = '') {
         });
         const safeUrl = escapeHtml(group.url);
         const safeName = escapeHtml(group.name);
-        const isGenericName = group.name === 'Facebook' || group.name.startsWith('Group #');
+        const isGenericName = group.name === 'Facebook' || group.name.startsWith('Group #') || group.name.startsWith('Zalo Group #');
         const badgeClass = isGenericName ? 'group-badge no-name' : 'group-badge';
-        const badgeText = isGenericName ? 'Chưa có tên' : 'Công khai';
+        const badgeText = currentPlatform === 'zalo' ? (isGenericName ? 'Chưa rõ' : 'Nhóm Zalo') : (isGenericName ? 'Chưa có tên' : 'Công khai');
         const memberHtml = group.member_count ? `<span class="group-members">👥 ${escapeHtml(group.member_count)}</span>` : '';
         const privacyHtml = group.privacy ? `<span class="group-privacy">${escapeHtml(group.privacy)}</span>` : '';
         const descHtml = group.description ? `<div class="group-desc" title="${escapeHtml(group.description)}">${escapeHtml(group.description)}</div>` : '';
